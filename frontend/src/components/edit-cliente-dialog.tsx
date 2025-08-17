@@ -1,0 +1,182 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+interface Cliente {
+  idCliente: number
+  Nombre_Cliente: string
+  Apellido_Cliente: string
+  razon_s_Cliente?: string
+  ruc_Cliente?: string
+  direccion_Cliente?: string
+  telefono_Cliente?: string
+  correo_Cliente?: string
+}
+
+interface EditClienteDialogProps {
+  cliente: Cliente
+  onClienteUpdated: () => void
+  onClose: () => void
+}
+
+export function EditClienteDialog({ cliente, onClienteUpdated, onClose }: EditClienteDialogProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [formData, setFormData] = useState(cliente)
+
+  useEffect(() => {
+    setFormData(cliente)
+  }, [cliente])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const token = localStorage.getItem('token')
+      const clienteData = {
+        nombres: formData.Nombre_Cliente,
+        apellidos: formData.Apellido_Cliente,
+        dni: formData.ruc_Cliente,
+        direccion: formData.direccion_Cliente,
+        telefono: formData.telefono_Cliente,
+        email: formData.correo_Cliente
+      }
+      const response = await fetch(`http://localhost:3001/api/clientes/${cliente.idCliente}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(clienteData)
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al actualizar cliente')
+      }
+
+      onClienteUpdated()
+      onClose()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error al actualizar cliente')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar Cliente</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-md border border-red-200 dark:bg-red-900/50 dark:text-red-200 dark:border-red-800">
+              {error}
+            </div>
+          )}
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="Nombre_Cliente">Nombre</Label>
+              <Input
+                id="Nombre_Cliente"
+                name="Nombre_Cliente"
+                value={formData.Nombre_Cliente}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="Apellido_Cliente">Apellido</Label>
+              <Input
+                id="Apellido_Cliente"
+                name="Apellido_Cliente"
+                value={formData.Apellido_Cliente}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+
+          <div className="space-y-2">
+            <Label htmlFor="ruc_Cliente">RUC/DNI</Label>
+            <Input
+              id="ruc_Cliente"
+              name="ruc_Cliente"
+              value={formData.ruc_Cliente || ''}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="direccion_Cliente">Dirección</Label>
+            <Input
+              id="direccion_Cliente"
+              name="direccion_Cliente"
+              value={formData.direccion_Cliente || ''}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="telefono_Cliente">Teléfono</Label>
+            <Input
+              id="telefono_Cliente"
+              name="telefono_Cliente"
+              type="tel"
+              value={formData.telefono_Cliente || ''}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="correo_Cliente">Email</Label>
+            <Input
+              id="correo_Cliente"
+              name="correo_Cliente"
+              type="email"
+              value={formData.correo_Cliente || ''}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="button" 
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Actualizando...
+                </>
+              ) : (
+                'Actualizar Cliente'
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
