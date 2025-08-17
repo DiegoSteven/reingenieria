@@ -41,10 +41,39 @@ export default function VentasPage() {
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [totalPeriodo, setTotalPeriodo] = useState(0)
+  const [configuracion, setConfiguracion] = useState({
+    nombre_empresa: '',
+    impuesto: '',
+    moneda: '',
+    simbolo_moneda: 'S/',
+    direccion: '',
+    ruc: '',
+    celular: '',
+    dimension_x: '',
+    dimension_y: ''
+  })
 
   useEffect(() => {
+    loadConfiguracion()
     loadFacturas()
   }, [])
+
+  const loadConfiguracion = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:3001/api/configuracion', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (response.ok && data.data) {
+        setConfiguracion(data.data)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
 
   useEffect(() => {
     if (searchTerm) {
@@ -186,7 +215,7 @@ export default function VentasPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">S/ {totalPeriodo.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{configuracion.simbolo_moneda} {totalPeriodo.toFixed(2)}</p>
             <p className="text-sm text-gray-500 mt-2">
               {startDate && endDate ? 
                 `Del ${format(startDate, 'PPP', { locale: es })} al ${format(endDate, 'PPP', { locale: es })}` :
@@ -375,7 +404,7 @@ export default function VentasPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
                       <p className="font-medium text-lg text-green-600 dark:text-green-400">
-                        S/ {(typeof factura.totals === 'string' ? parseFloat(factura.totals) : Number(factura.totals)).toFixed(2)}
+                        {configuracion.simbolo_moneda} {(typeof factura.totals === 'string' ? parseFloat(factura.totals) : Number(factura.totals)).toFixed(2)}
                       </p>
                     </div>
                   </div>

@@ -41,6 +41,10 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
   const [selectedCliente, setSelectedCliente] = useState<string>('')
   const [selectedEspacio, setSelectedEspacio] = useState<string>('')
   const [total, setTotal] = useState<string>('')
+  const [configuracion, setConfiguracion] = useState({
+    simbolo_moneda: 'S/',
+    moneda: 'SOLES'
+  })
 
   const [isCajaOpen, setIsCajaOpen] = useState(false)
 
@@ -49,8 +53,26 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
       loadClientes()
       loadEspacios()
       checkCajaStatus()
+      loadConfiguracion()
     }
   }, [isOpen])
+
+  const loadConfiguracion = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:3001/api/configuracion', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (response.ok && data.data) {
+        setConfiguracion(data.data)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
 
   const checkCajaStatus = async () => {
     try {
@@ -267,7 +289,7 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="total">Total S/</Label>
+            <Label htmlFor="total">Total {configuracion.simbolo_moneda}</Label>
             <Input
               id="total"
               type="number"

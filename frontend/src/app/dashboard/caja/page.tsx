@@ -40,6 +40,18 @@ interface EstadoCaja {
   montoInicial?: number
 }
 
+interface Configuracion {
+  nombre_empresa: string
+  impuesto: string
+  moneda: string
+  simbolo_moneda: string
+  direccion: string
+  ruc: string
+  celular: string
+  dimension_x: string
+  dimension_y: string
+}
+
 export default function CajaPage() {
   const { toast } = useToast()
   const [movimientos, setMovimientos] = useState<MovimientoCaja[]>([])
@@ -47,6 +59,17 @@ export default function CajaPage() {
   const [error, setError] = useState('')
   const [date, setDate] = useState<Date>(new Date())
   const [montoTotal, setMontoTotal] = useState(0)
+  const [configuracion, setConfiguracion] = useState<Configuracion>({
+    nombre_empresa: '',
+    impuesto: '',
+    moneda: '',
+    simbolo_moneda: 'S/',
+    direccion: '',
+    ruc: '',
+    celular: '',
+    dimension_x: '',
+    dimension_y: ''
+  })
   const [estadoCaja, setEstadoCaja] = useState<EstadoCaja>({
     abierta: false,
     saldoActual: 0
@@ -59,8 +82,26 @@ export default function CajaPage() {
   })
 
   useEffect(() => {
+    loadConfiguracion()
     loadMovimientos()
   }, [date])
+
+  const loadConfiguracion = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:3001/api/configuracion', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (response.ok && data.data) {
+        setConfiguracion(data.data)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
 
   const loadMovimientos = async () => {
     try {
@@ -159,7 +200,7 @@ export default function CajaPage() {
       if (response.ok) {
         toast({
           title: "Éxito",
-          description: "Caja abierta correctamente con un monto inicial de S/ " + montoInicialNum.toFixed(2)
+          description: `Caja abierta correctamente con un monto inicial de ${configuracion.simbolo_moneda} ${montoInicialNum.toFixed(2)}`
         })
         setMontoInicial('')
         await loadMovimientos()
@@ -286,12 +327,12 @@ export default function CajaPage() {
               </div>
               <div>
                 <Label>Monto Inicial</Label>
-                <p className="text-sm">S/ {Number(estadoCaja.montoInicial || 0).toFixed(2)}</p>
+                <p className="text-sm">{configuracion.simbolo_moneda} {Number(estadoCaja.montoInicial || 0).toFixed(2)}</p>
               </div>
               <div>
                 <Label>Saldo Actual</Label>
                 <p className={`text-xl font-bold ${montoTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  S/ {montoTotal.toFixed(2)}
+                  {configuracion.simbolo_moneda} {montoTotal.toFixed(2)}
                 </p>
               </div>
               <Button onClick={cerrarCaja} variant="destructive">Cerrar Caja</Button>
@@ -316,7 +357,7 @@ export default function CajaPage() {
                 disabled={!montoInicial || parseFloat(montoInicial) <= 0}
               >
                 {montoInicial && parseFloat(montoInicial) > 0 ? (
-                  'Abrir Caja con S/ ' + parseFloat(montoInicial).toFixed(2)
+                  `Abrir Caja con ${configuracion.simbolo_moneda} ${parseFloat(montoInicial).toFixed(2)}`
                 ) : (
                   'Abrir Caja'
                 )}
@@ -334,7 +375,7 @@ export default function CajaPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-green-600">
-              S/ {movimientos
+              {configuracion.simbolo_moneda} {movimientos
                 .filter(m => m.estado === 'ingreso' || m.estado === 'apertura')
                 .reduce((acc, mov) => acc + Number(mov.monto), 0)
                 .toFixed(2)}
@@ -351,7 +392,7 @@ export default function CajaPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-red-600">
-              S/ {movimientos
+              {configuracion.simbolo_moneda} {movimientos
                 .filter(m => m.estado === 'egreso')
                 .reduce((acc, mov) => acc + Number(mov.monto), 0)
                 .toFixed(2)}
@@ -470,7 +511,7 @@ export default function CajaPage() {
                         movimiento.estado === 'ingreso' || movimiento.estado === 'apertura' ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {movimiento.estado === 'ingreso' || movimiento.estado === 'apertura' ? '+' : '-'}
-                        S/ {Math.abs(movimiento.monto).toFixed(2)}
+                        {configuracion.simbolo_moneda} {Math.abs(movimiento.monto).toFixed(2)}
                       </td>
                     </tr>
                   ))
