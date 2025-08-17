@@ -22,10 +22,18 @@ export default function DashboardLayout({
     const token = localStorage.getItem('token')
     if (!token) {
       router.push('/auth/login')
+      return
     }
-    // Aquí podrías decodificar el token JWT para obtener el rol del usuario
-    // Por ahora usaremos un valor de ejemplo
-    setUser({ role: 'admin' })
+    
+    try {
+      // Decodificar el token JWT
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      setUser({ role: payload.tipo }) // el token contiene el tipo de usuario (admin o empleado)
+    } catch (error) {
+      console.error('Error al decodificar el token:', error)
+      localStorage.removeItem('token')
+      router.push('/auth/login')
+    }
   }, [router])
 
   const handleLogout = () => {
@@ -38,31 +46,31 @@ export default function DashboardLayout({
       title: 'Dashboard',
       icon: <LayoutDashboard className="w-4 h-4" />,
       href: '/dashboard',
-      roles: ['admin', 'empleado']
+      roles: ['Administrador', 'Empleado']
     },
     {
       title: 'Clientes',
       icon: <UserCircle className="w-4 h-4" />,
       href: '/dashboard/clientes',
-      roles: ['admin', 'empleado']
+      roles: ['Administrador', 'Empleado']
     },
     {
       title: 'Usuarios',
       icon: <Users className="w-4 h-4" />,
       href: '/dashboard/usuarios',
-      roles: ['admin']
+      roles: ['Administrador']
     },
     {
       title: 'Espacios',
       icon: <Car className="w-4 h-4" />,
       href: '/dashboard/espacios',
-      roles: ['admin', 'empleado']
+      roles: ['Administrador', 'Empleado']
     },
     {
       title: 'Ventas',
       icon: <ShoppingCart className="w-4 h-4" />,
       href: '/dashboard/ventas',
-      roles: ['admin', 'empleado']
+      roles: ['Administrador', 'Empleado']
     },
     {
       title: 'Caja',
@@ -70,19 +78,19 @@ export default function DashboardLayout({
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>,
       href: '/dashboard/caja',
-      roles: ['admin', 'empleado']
+      roles: ['Administrador', 'Empleado']
     },
     {
       title: 'Configuración',
       icon: <Settings className="w-4 h-4" />,
       href: '/dashboard/configuracion',
-      roles: ['admin']
+      roles: ['Administrador']
     },
     {
       title: 'Acerca de',
       icon: <Info className="w-4 h-4" />,
-      href: '/dashboard/acerca',
-      roles: ['admin', 'empleado']
+      href: '/dashboard/about',
+      roles: ['Administrador', 'Empleado']
     }
   ]
 
