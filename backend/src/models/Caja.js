@@ -19,6 +19,10 @@ const Caja = sequelize.define('Caja', {
     type: DataTypes.STRING(200),
     allowNull: false,
   },
+  referencia: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+  }
 }, {
   tableName: 'table_cajas',
   timestamps: false,

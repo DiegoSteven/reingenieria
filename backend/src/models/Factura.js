@@ -41,7 +41,13 @@ const Factura = sequelize.define('Factura', {
   timestamps: false,
 });
 
-Factura.belongsTo(Cliente, { foreignKey: 'cliente' });
-Cliente.hasMany(Factura, { foreignKey: 'cliente' });
+Factura.belongsTo(Cliente, { 
+  foreignKey: 'cliente',
+  as: 'Cliente'
+});
+Cliente.hasMany(Factura, { 
+  foreignKey: 'cliente',
+  as: 'Facturas'
+});
 
 export default Factura;
