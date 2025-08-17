@@ -41,9 +41,32 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
   const [selectedCliente, setSelectedCliente] = useState<string>('')
   const [selectedEspacio, setSelectedEspacio] = useState<string>('')
   const [total, setTotal] = useState<string>('')
-  const [configuracion, setConfiguracion] = useState({
+  interface Configuracion {
+    simbolo_moneda: string;
+    moneda: string;
+    impuesto: string;
+    nombre_empresa: string;
+    direccion: string;
+    ruc: string;
+    celular: string;
+    dimension_x: string;
+    dimension_y: string;
+    cantidad_ceros_boleta: string;
+    cantidad_ceros_factura: string;
+  }
+
+  const [configuracion, setConfiguracion] = useState<Configuracion>({
     simbolo_moneda: 'S/',
-    moneda: 'SOLES'
+    moneda: 'SOLES',
+    impuesto: '15',
+    nombre_empresa: '',
+    direccion: '',
+    ruc: '',
+    celular: '',
+    dimension_x: '',
+    dimension_y: '',
+    cantidad_ceros_boleta: '',
+    cantidad_ceros_factura: ''
   })
 
   const [isCajaOpen, setIsCajaOpen] = useState(false)
@@ -288,17 +311,36 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="total">Total {configuracion.simbolo_moneda}</Label>
-            <Input
-              id="total"
-              type="number"
-              step="0.01"
-              min="0"
-              value={total}
-              onChange={(e) => setTotal(e.target.value)}
-              required
-            />
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="total">Total {configuracion.simbolo_moneda}</Label>
+              <Input
+                id="total"
+                type="number"
+                step="0.01"
+                min="0"
+                value={total}
+                onChange={(e) => setTotal(e.target.value)}
+                required
+              />
+            </div>
+
+            {total && configuracion.impuesto && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Valor operaciones gravadas:</span>
+                  <span>{configuracion.simbolo_moneda} {(parseFloat(total) / (1 + parseFloat(configuracion.impuesto) / 100)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Impuesto ({configuracion.impuesto}%):</span>
+                  <span>{configuracion.simbolo_moneda} {((parseFloat(total) / (1 + parseFloat(configuracion.impuesto) / 100)) * (parseFloat(configuracion.impuesto) / 100)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span>Importe total:</span>
+                  <span>{configuracion.simbolo_moneda} {parseFloat(total).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-4">

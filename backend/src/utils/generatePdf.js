@@ -84,9 +84,21 @@ export async function generateFacturaPDF(factura, cliente, configuracion) {
 
       // Detalles de la venta
       const total = typeof factura.totals === 'string' ? parseFloat(factura.totals) : Number(factura.totals);
-      const impuestoRate = configuracion?.impuesto ? parseFloat(configuracion.impuesto) / 100 : 0.18;
+
+      // Si no hay configuración de impuesto, lanzar error
+      if (!configuracion?.impuesto) {
+        throw new Error('No se ha configurado el impuesto en el sistema');
+      }
+
+      // Asegurarnos de que el impuesto sea un número desde la configuración
+      const impuestoRate = parseFloat(configuracion.impuesto) / 100;
+      
+      // Calcular valores correctamente usando el método directo:
+      // 1. Total es el monto ingresado por el usuario (incluye impuesto)
+      // 2. Subtotal (monto base) = Total / (1 + impuestoRate)
+      // 3. Impuesto = Subtotal * impuestoRate
       const subtotal = total / (1 + impuestoRate);
-      const igv = total - subtotal;
+      const igv = subtotal * impuestoRate;
       const simboloMoneda = configuracion?.simbolo_moneda || 'S/';
       const nombreMoneda = configuracion?.moneda || 'SOLES';
 

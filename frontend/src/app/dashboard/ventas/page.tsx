@@ -242,13 +242,13 @@ export default function VentasPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col space-y-4">
                 <div>
                   <Label>Fecha Inicio</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                        {startDate ? format(startDate, 'PPP', { locale: es }) : 'Seleccionar'}
+                      <Button variant="outline" className="w-full justify-start text-left font-normal mt-1 truncate">
+                        {startDate ? format(startDate, 'd MMMM yyyy', { locale: es }) : 'Seleccionar'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -265,8 +265,8 @@ export default function VentasPage() {
                   <Label>Fecha Fin</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                        {endDate ? format(endDate, 'PPP', { locale: es }) : 'Seleccionar'}
+                      <Button variant="outline" className="w-full justify-start text-left font-normal mt-1 truncate">
+                        {endDate ? format(endDate, 'd MMMM yyyy', { locale: es }) : 'Seleccionar'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
