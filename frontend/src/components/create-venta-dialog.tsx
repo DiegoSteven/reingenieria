@@ -61,10 +61,17 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
         }
       })
       const data = await response.json()
-      setIsCajaOpen(data.abierta)
       
-      if (!data.abierta) {
-        setError('La caja debe estar abierta para registrar ventas')
+      if (data.success && data.data) {
+        const { estaAbierta, saldoActual } = data.data
+        setIsCajaOpen(estaAbierta)
+        setError('')
+
+        if (!estaAbierta) {
+          setError('La caja debe estar abierta para registrar ventas')
+        }
+      } else {
+        setError('Error al verificar el estado de la caja')
       }
     } catch (error) {
       console.error('Error al verificar estado de caja:', error)
@@ -149,23 +156,6 @@ export function CreateVentaDialog({ onVentaCreated }: CreateVentaDialogProps) {
 
       setIsOpen(false)
       onVentaCreated()
-      
-      // Actualizar caja
-      const cajaResponse = await fetch('http://localhost:3001/api/caja', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          monto: parseFloat(total),
-          estado: 'ingreso'
-        })
-      })
-
-      if (!cajaResponse.ok) {
-        console.error('Error al actualizar caja:', await cajaResponse.text())
-      }
 
       // Generar PDF
       const pdfResponse = await fetch(`http://localhost:3001/api/facturas/${data.data.No_Facturas}/pdf`, {

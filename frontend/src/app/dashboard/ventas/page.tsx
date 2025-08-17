@@ -21,7 +21,7 @@ interface Factura {
   cliente: number
   id_mesas: number
   fecha: string
-  totals: number
+  totals: number | string  // Puede venir como string desde la BD
   nro_boleta: number
   factura_boleta: string
   Cliente?: {
@@ -84,8 +84,11 @@ export default function VentasPage() {
 
       setFacturas(data.data || [])
       
-      // Calcular total del periodo
-      const total = (data.data || []).reduce((acc: number, factura: Factura) => acc + factura.totals, 0)
+      // Calcular total del periodo asegurando que los valores sean números
+      const total = (data.data || []).reduce((acc: number, factura: Factura) => {
+        const totalFactura = typeof factura.totals === 'string' ? parseFloat(factura.totals) : Number(factura.totals)
+        return acc + (isNaN(totalFactura) ? 0 : totalFactura)
+      }, 0)
       setTotalPeriodo(total)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error al cargar facturas')
@@ -119,19 +122,44 @@ export default function VentasPage() {
   const handlePrint = async (facturaId: number) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:3001/api/facturas/${facturaId}/print`, {
+      const response = await fetch(`http://localhost:3001/api/facturas/${facturaId}/pdf`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
       
       if (!response.ok) {
-        throw new Error('Error al imprimir la factura')
+        throw new Error('Error al obtener la factura para imprimir')
       }
 
-      // La impresión se maneja en el backend
+      // Obtener el PDF como blob
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      // Abrir el PDF en una nueva ventana
+      const printWindow = window.open(url, '_blank')
+      
+      if (printWindow) {
+        // Esperar un momento para que el PDF se cargue
+        setTimeout(() => {
+          try {
+            printWindow.print()
+          } catch (err) {
+            console.error('Error al imprimir:', err)
+          }
+        }, 1000)
+        
+        // Limpiar cuando la ventana se cierre
+        printWindow.onafterprint = () => {
+          printWindow.close()
+          window.URL.revokeObjectURL(url)
+        }
+      } else {
+        throw new Error('El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.')
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Error al imprimir la factura')
+      console.error('Error:', error)
     }
   }
 
@@ -347,7 +375,7 @@ export default function VentasPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
                       <p className="font-medium text-lg text-green-600 dark:text-green-400">
-                        S/ {factura.totals.toFixed(2)}
+                        S/ {(typeof factura.totals === 'string' ? parseFloat(factura.totals) : Number(factura.totals)).toFixed(2)}
                       </p>
                     </div>
                   </div>

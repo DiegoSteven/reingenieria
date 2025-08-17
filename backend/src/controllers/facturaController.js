@@ -2,6 +2,15 @@ import { Op } from 'sequelize';
 import Factura from '../models/Factura.js';
 import Cliente from '../models/Cliente.js';
 import Caja from '../models/Caja.js';
+import Configuracion from '../models/Configuracion.js';
+import { generateFacturaPDF } from '../utils/generatePdf.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function registrarVenta(req, res) {
   try {
@@ -14,22 +23,53 @@ export async function registrarVenta(req, res) {
       });
     }
 
-    // Verificar si la caja está abierta
-    const cajaAbierta = await Caja.findOne({
+    // Verificar el estado de la caja
+    const fecha = new Date();
+    const apertura = await Caja.findOne({
       where: {
         fecha: {
-          [Op.gte]: new Date().toISOString().split('T')[0]
+          [Op.gte]: fecha.toISOString().split('T')[0]
         },
-        estado: 'abierta'
+        estado: 'apertura'
       }
     });
 
-    if (!cajaAbierta) {
+    const cierre = await Caja.findOne({
+      where: {
+        fecha: {
+          [Op.gte]: fecha.toISOString().split('T')[0]
+        },
+        estado: 'cierre'
+      }
+    });
+
+    if (!apertura || cierre) {
       return res.status(400).json({
         success: false,
         message: 'La caja debe estar abierta para registrar ventas'
       });
     }
+
+    // Verificar saldo disponible
+    const movimientos = await Caja.findAll({
+      where: {
+        fecha: {
+          [Op.gte]: fecha.toISOString().split('T')[0]
+        },
+        estado: {
+          [Op.in]: ['apertura', 'ingreso', 'egreso']
+        }
+      }
+    });
+
+    const saldoActual = movimientos.reduce((acc, mov) => {
+      if (mov.estado === 'apertura' || mov.estado === 'ingreso') {
+        return acc + Number(mov.monto);
+      } else if (mov.estado === 'egreso') {
+        return acc - Number(mov.monto);
+      }
+      return acc;
+    }, 0);
 
     // Obtener el último número de boleta
     const ultimaFactura = await Factura.findOne({
@@ -81,6 +121,82 @@ export async function registrarVenta(req, res) {
       success: false, 
       message: 'Error al registrar venta', 
       error: err.message 
+    });
+  }
+}
+
+export async function obtenerPDF(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const factura = await Factura.findOne({
+      where: { No_Facturas: id },
+      include: [{
+        model: Cliente,
+        as: 'Cliente'
+      }]
+    });
+
+    if (!factura) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    const configuracion = await Configuracion.findOne();
+    const pdfPath = await generateFacturaPDF(factura, factura.Cliente, configuracion);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="factura-${factura.No_Facturas}.pdf"`);
+    
+    const fileStream = fs.createReadStream(pdfPath);
+    fileStream.pipe(res);
+  } catch (err) {
+    console.error('Error al generar PDF:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar PDF',
+      error: err.message
+    });
+  }
+}
+
+export async function imprimirFactura(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const factura = await Factura.findOne({
+      where: { No_Facturas: id },
+      include: [{
+        model: Cliente,
+        as: 'Cliente'
+      }]
+    });
+
+    if (!factura) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    const configuracion = await Configuracion.findOne();
+    const pdfPath = await generateFacturaPDF(factura, factura.Cliente, configuracion);
+
+    // Enviar el PDF como respuesta
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="factura-${factura.No_Facturas}.pdf"`);
+    
+    const fileStream = fs.createReadStream(pdfPath);
+    fileStream.pipe(res);
+
+  } catch (err) {
+    console.error('Error al obtener factura para imprimir:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener factura para imprimir',
+      error: err.message
     });
   }
 }

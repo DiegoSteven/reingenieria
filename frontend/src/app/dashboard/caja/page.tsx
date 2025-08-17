@@ -102,9 +102,9 @@ export default function CajaPage() {
       let egresos = 0
       data.data.forEach((mov: MovimientoCaja) => {
         const monto = Number(mov.monto)
-        if (mov.estado === 'ingreso') {
+        if (mov.estado === 'ingreso' || mov.estado === 'apertura') {
           ingresos += monto
-        } else {
+        } else if (mov.estado === 'egreso') {
           egresos += monto
         }
       })
@@ -286,7 +286,7 @@ export default function CajaPage() {
               </div>
               <div>
                 <Label>Monto Inicial</Label>
-                <p className="text-sm">S/ {estadoCaja.montoInicial?.toFixed(2)}</p>
+                <p className="text-sm">S/ {Number(estadoCaja.montoInicial || 0).toFixed(2)}</p>
               </div>
               <div>
                 <Label>Saldo Actual</Label>
@@ -335,12 +335,12 @@ export default function CajaPage() {
           <CardContent>
             <p className="text-3xl font-bold text-green-600">
               S/ {movimientos
-                .filter(m => m.estado === 'ingreso')
+                .filter(m => m.estado === 'ingreso' || m.estado === 'apertura')
                 .reduce((acc, mov) => acc + Number(mov.monto), 0)
                 .toFixed(2)}
             </p>
             <p className="text-sm text-gray-500 mt-2">
-              {movimientos.filter(m => m.estado === 'ingreso').length} movimientos
+              {movimientos.filter(m => m.estado === 'ingreso' || m.estado === 'apertura').length} movimientos
             </p>
           </CardContent>
         </Card>
@@ -453,11 +453,11 @@ export default function CajaPage() {
                     <tr key={movimiento.id_table_cajas}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          movimiento.estado === 'ingreso' 
+                          movimiento.estado === 'ingreso' || movimiento.estado === 'apertura'
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                             : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         }`}>
-                          {movimiento.estado === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                          {movimiento.estado === 'apertura' ? 'Apertura' : movimiento.estado === 'ingreso' ? 'Ingreso' : 'Egreso'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -467,9 +467,9 @@ export default function CajaPage() {
                         {movimiento.referencia || '-'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
-                        movimiento.estado === 'ingreso' ? 'text-green-600' : 'text-red-600'
+                        movimiento.estado === 'ingreso' || movimiento.estado === 'apertura' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {movimiento.estado === 'ingreso' ? '+' : '-'}
+                        {movimiento.estado === 'ingreso' || movimiento.estado === 'apertura' ? '+' : '-'}
                         S/ {Math.abs(movimiento.monto).toFixed(2)}
                       </td>
                     </tr>
