@@ -1,4 +1,5 @@
 import Caja from '../models/Caja.js';
+import Configuracion from '../models/Configuracion.js';
 import { Op } from 'sequelize';
 
 export async function consultarCaja(req, res) {
@@ -12,17 +13,23 @@ export async function consultarCaja(req, res) {
 
     const movimientos = await Caja.findAll({
       where,
-      order: [['fecha', 'DESC'], ['id_table_cajas', 'DESC']]
+      order: [['id_table_cajas', 'ASC']]  // Ordenar por ID ascendente para mantener el orden cronológico
     });
 
-    // Calcular saldo actual
-    const saldoActual = movimientos.reduce((acc, mov) => {
+    // Filtrar los movimientos válidos (no mostrar registros cerrados ni de cierre)
+    const movimientosValidos = movimientos.filter(mov => mov.estado !== 'cerrada' && mov.estado !== 'cierre');
+
+    // Calcular saldo actual solo con movimientos válidos
+    const saldoActual = movimientosValidos.reduce((acc, mov) => {
+      const monto = Number(mov.monto);
+      if (isNaN(monto)) return acc;
+      
       switch(mov.estado) {
         case 'apertura':
         case 'ingreso':
-          return acc + Number(mov.monto);
+          return acc + monto;
         case 'egreso':
-          return acc - Number(mov.monto);
+          return acc - monto;
         default:
           return acc;
       }
@@ -46,11 +53,27 @@ export async function consultarCaja(req, res) {
 export async function registrarMovimiento(req, res) {
   try {
     const { monto, estado, referencia } = req.body;
+    const fecha = new Date().toISOString().split('T')[0];
+    
+    // Verificar si hay una caja abierta
+    const cajaAbierta = await Caja.findOne({
+      where: {
+        fecha: fecha,
+        estado: 'apertura'
+      }
+    });
+
+    if (!cajaAbierta) {
+      return res.status(400).json({
+        success: false,
+        message: 'La caja debe estar abierta para registrar movimientos'
+      });
+    }
     
     const movimientoData = {
       monto: monto,
       estado: estado,
-      fecha: new Date(),
+      fecha: fecha,
       referencia: referencia || null
     };
     
@@ -140,7 +163,22 @@ export async function abrirCaja(req, res) {
 export async function cerrarCaja(req, res) {
   try {
     const { fecha } = req.query;
-    const fechaCierre = fecha || new Date();
+    const fechaCierre = fecha || new Date().toISOString().split('T')[0];
+
+    // Buscar la apertura del día
+    const apertura = await Caja.findOne({
+      where: {
+        fecha: fechaCierre,
+        estado: 'apertura'
+      }
+    });
+
+    if (!apertura) {
+      return res.status(400).json({
+        success: false,
+        message: 'No hay una caja abierta para cerrar'
+      });
+    }
 
     // Obtener todos los movimientos del día
     const movimientos = await Caja.findAll({
@@ -161,6 +199,16 @@ export async function cerrarCaja(req, res) {
           return acc;
       }
     }, 0);
+
+    // Actualizar el estado de la apertura a 'cerrada'
+    await Caja.update(
+      { estado: 'cerrada' },
+      {
+        where: {
+          id_table_cajas: apertura.id_table_cajas
+        }
+      }
+    );
 
     // Registrar cierre
     const cierre = await Caja.create({
@@ -192,7 +240,16 @@ export async function obtenerEstadoCaja(req, res) {
   try {
     const fecha = new Date().toISOString().split('T')[0];
     
-    // Buscar apertura del día
+    // Obtener la configuración
+    const configuracion = await Configuracion.findOne();
+    const simbolo_moneda = configuracion?.simbolo_moneda || 'S/';
+    
+    // Verificar si hay una configuración válida
+    if (!configuracion) {
+      console.warn('No se encontró configuración del sistema');
+    }
+    
+    // Buscar apertura del día que no esté cerrada
     const apertura = await Caja.findOne({
       where: {
         fecha: fecha,
@@ -215,19 +272,25 @@ export async function obtenerEstadoCaja(req, res) {
     if (apertura) {
       movimientos = await Caja.findAll({
         where: {
-          fecha: fecha
+          fecha: fecha,
+          estado: {
+            [Op.notIn]: ['cerrada', 'cierre']
+          }
         },
         order: [['id_table_cajas', 'ASC']]
       });
 
       // Calculamos el saldo según los movimientos
       saldoActual = movimientos.reduce((acc, mov) => {
+        const monto = Number(mov.monto);
+        if (isNaN(monto)) return acc;
+        
         switch(mov.estado) {
           case 'apertura':
           case 'ingreso':
-            return acc + Number(mov.monto);
+            return acc + monto;
           case 'egreso':
-            return acc - Number(mov.monto);
+            return acc - monto;
           default:
             return acc;
         }
@@ -242,13 +305,14 @@ export async function obtenerEstadoCaja(req, res) {
         estaAbierta: estaAbierta,
         apertura: apertura ? {
           fecha: apertura.fecha,
-          monto: apertura.monto
+          monto: Number(apertura.monto)
         } : null,
-        saldoActual: saldoActual,
+        saldoActual: Number(saldoActual),
+        simbolo_moneda: simbolo_moneda,
         movimientos: movimientos.map(m => ({
           id: m.id_table_cajas,
           fecha: m.fecha,
-          monto: m.monto,
+          monto: Number(m.monto),
           estado: m.estado,
           referencia: m.referencia
         }))
